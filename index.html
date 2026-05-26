@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Mortar Calculator</title>
+
+<style>
+    body {
+        background-color: black;
+        color: white;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+    }
+
+    .container {
+        display: flex;
+        gap: 50px;
+        align-items: flex-start;
+    }
+
+    .panel {
+        width: 360px;
+    }
+
+    input, textarea {
+        background-color: #222;
+        color: white;
+        border: 1px solid #555;
+        padding: 5px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    textarea {
+        height: 80px;
+        resize: vertical;
+    }
+
+    button {
+        background-color: #333;
+        color: white;
+        border: 1px solid #666;
+        padding: 6px 12px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+    button:hover {
+        background-color: #444;
+    }
+
+    .results {
+        margin-top: 15px;
+    }
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Spotter Team -->
+    <div class="panel">
+
+        <h3>Mortar Team w/ Spotter</h3>
+
+        <label>Initial Bearing / Azimuth</label><br>
+        <input type="text" id="spotterBearing"><br><br>
+
+        <label>Mortar → Spotter Distance (m)</label><br>
+        <input type="number" id="mortarSpotter"><br><br>
+
+        <label>Spotter → Target Distance (m)</label><br>
+        <input type="number" id="spotterTarget"><br><br>
+
+        <label>Spotter Elevation / Depression (degrees)</label><br>
+        <input type="number" id="spotterAngle"><br><br>
+
+        <label>Notes</label><br>
+        <textarea id="spotterNotes"></textarea><br><br>
+
+        <button onclick="calculateSpotter()">Calculate</button>
+
+        <div class="results" id="spotterResults"></div>
+
+    </div>
+
+    <!-- Solo Team -->
+    <div class="panel">
+
+        <h3>Mortar Team w/o Spotter</h3>
+
+        <label>Initial Bearing / Azimuth</label><br>
+        <input type="text" id="soloBearing"><br><br>
+
+        <label>Estimated Target Distance (m)</label><br>
+        <input type="number" id="soloDistance"><br><br>
+
+        <label>Notes</label><br>
+        <textarea id="soloNotes"></textarea><br><br>
+
+        <button onclick="calculateSolo()">Calculate</button>
+
+        <div class="results" id="soloResults"></div>
+
+    </div>
+
+</div>
+
+<script>
+
+const v = 76;
+const g = 9.8;
+
+function solveBallistics(range, heightDifference, outputId) {
+
+    const discriminant =
+        Math.pow(v, 4) -
+        g * (
+            g * Math.pow(range, 2) +
+            2 * heightDifference * Math.pow(v, 2)
+        );
+
+    if (discriminant < 0) {
+
+        document.getElementById(outputId).innerHTML =
+            "Target unreachable.";
+
+        return;
+    }
+
+    const sqrtPart = Math.sqrt(discriminant);
+
+    const lowRad = Math.atan(
+        (Math.pow(v, 2) - sqrtPart) /
+        (g * range)
+    );
+
+    const highRad = Math.atan(
+        (Math.pow(v, 2) + sqrtPart) /
+        (g * range)
+    );
+
+    const lowDeg = lowRad * (180 / Math.PI);
+    const highDeg = highRad * (180 / Math.PI);
+
+    document.getElementById(outputId).innerHTML = `
+        Range:
+        ${range.toFixed(2)} m<br><br>
+
+        Height Difference:
+        ${heightDifference.toFixed(2)} m<br><br>
+
+        Low Angle:
+        ${lowDeg.toFixed(2)}°<br><br>
+
+        High Angle:
+        ${highDeg.toFixed(2)}°
+    `;
+}
+
+function calculateSpotter() {
+
+    const mortarSpotter =
+        parseFloat(document.getElementById("mortarSpotter").value);
+
+    const spotterTarget =
+        parseFloat(document.getElementById("spotterTarget").value);
+
+    const spotterAngle =
+        parseFloat(document.getElementById("spotterAngle").value);
+
+    const range = Math.sqrt(
+        Math.pow(mortarSpotter, 2) +
+        Math.pow(spotterTarget, 2)
+    );
+
+    const angleRad = spotterAngle * (Math.PI / 180);
+
+    const heightDifference =
+        Math.tan(angleRad) * spotterTarget;
+
+    solveBallistics(range, heightDifference, "spotterResults");
+}
+
+function calculateSolo() {
+
+    const range =
+        parseFloat(document.getElementById("soloDistance").value);
+
+    const heightDifference = 0;
+
+    solveBallistics(range, heightDifference, "soloResults");
+}
+
+</script>
+
+</body>
+</html>
