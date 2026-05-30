@@ -1,200 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Mortar Calculator</title>
-
-<style>
-    body {
-        background-color: black;
-        color: white;
-        font-family: Arial, sans-serif;
-        padding: 20px;
-    }
-
-    .container {
-        display: flex;
-        gap: 50px;
-        align-items: flex-start;
-    }
-
-    .panel {
-        width: 360px;
-    }
-
-    input, textarea {
-        background-color: #222;
-        color: white;
-        border: 1px solid #555;
-        padding: 5px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    textarea {
-        height: 80px;
-        resize: vertical;
-    }
-
-    button {
-        background-color: #333;
-        color: white;
-        border: 1px solid #666;
-        padding: 6px 12px;
-        cursor: pointer;
-        margin-top: 10px;
-    }
-
-    button:hover {
-        background-color: #444;
-    }
-
-    .results {
-        margin-top: 15px;
-    }
-</style>
-
+    <meta charset="UTF-8">
+    <title>M320 Fire Control Computer</title>
+    <style>
+        body { background-color: #000; color: #aaa; font-family: monospace; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        .grid-wrapper { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 60px; justify-items: center; width: 100%; max-width: 900px; }
+        .method-section { width: 100%; }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .input-group { display: flex; flex-direction: column; }
+        input { background: #111; color: #fff; border: 1px solid #666; padding: 14px; margin-top: 8px; text-align: center; }
+        h3 { color: #fff; border-bottom: 1px solid #444; padding-bottom: 15px; margin-bottom: 30px; }
+        .result { margin-top: 40px; text-align: center; color: #fff; font-size: 1.6em; border-top: 1px solid #444; padding-top: 25px; }
+        .val { color: #ffeb3b; }
+    </style>
 </head>
-
 <body>
 
-<div class="container">
-
-    <!-- Spotter Team -->
-    <div class="panel">
-
-        <h3>Mortar Team w/ Spotter</h3>
-
-        <label>Initial Bearing / Azimuth</label><br>
-        <input type="text" id="spotterBearing"><br><br>
-
-        <label>Mortar → Spotter Distance (m)</label><br>
-        <input type="number" id="mortarSpotter"><br><br>
-
-        <label>Spotter → Target Distance (m)</label><br>
-        <input type="number" id="spotterTarget"><br><br>
-
-        <label>Spotter Elevation / Depression (degrees)</label><br>
-        <input type="number" id="spotterAngle"><br><br>
-
-        <label>Notes</label><br>
-        <textarea id="spotterNotes"></textarea><br><br>
-
-        <button onclick="calculateSpotter()">Calculate</button>
-
-        <div class="results" id="spotterResults"></div>
-
+<div class="grid-wrapper">
+    <div class="method-section">
+        <h3>Grid Inputs</h3>
+        <div class="input-grid">
+            <div class="input-group">Mortar East<input type="text" id="me" oninput="solve()"></div>
+            <div class="input-group">Mortar North<input type="text" id="mn" oninput="solve()"></div>
+            <div class="input-group">Target East<input type="text" id="te" oninput="solve()"></div>
+            <div class="input-group">Target North<input type="text" id="tn" oninput="solve()"></div>
+        </div>
     </div>
 
-    <!-- Solo Team -->
-    <div class="panel">
-
-        <h3>Mortar Team w/o Spotter</h3>
-
-        <label>Initial Bearing / Azimuth</label><br>
-        <input type="text" id="soloBearing"><br><br>
-
-        <label>Estimated Target Distance (m)</label><br>
-        <input type="number" id="soloDistance"><br><br>
-
-        <label>Notes</label><br>
-        <textarea id="soloNotes"></textarea><br><br>
-
-        <button onclick="calculateSolo()">Calculate</button>
-
-        <div class="results" id="soloResults"></div>
-
+    <div class="method-section">
+        <h3>Spotter Inputs</h3>
+        <div class="input-grid">
+            <div class="input-group">Mortar &rarr; Spotter (m)<input type="text" id="d1" oninput="solve()"></div>
+            <div class="input-group">Elev to Mortar (&deg;)<input type="text" id="eSM" oninput="solve()"></div>
+            <div class="input-group">Spotter &rarr; Target (m)<input type="text" id="d2" oninput="solve()"></div>
+            <div class="input-group">Elev to Target (&deg;)<input type="text" id="eST" oninput="solve()"></div>
+        </div>
+        <div class="input-group">Spotter Angle (&deg;)<input type="text" id="angle" oninput="solve()"></div>
     </div>
+</div>
 
+<div class="result" style="width: 800px;">
+    Bearing: <span class="val" id="resB">--</span>&deg; | 
+    Firing Angle: <span class="val" id="resA">--</span>&deg;
 </div>
 
 <script>
+    function solve() {
+        // Velocity set to 75 as requested
+        const v = 75, g = 9.8, rad = Math.PI / 180;
+        
+        const me = parseFloat(document.getElementById('me').value), mn = parseFloat(document.getElementById('mn').value);
+        const te = parseFloat(document.getElementById('te').value), tn = parseFloat(document.getElementById('tn').value);
+        
+        let X = 0, B = "--";
+        
+        if (!isNaN(me) && !isNaN(te) && !isNaN(mn) && !isNaN(tn)) {
+            const dx = te - me, dy = tn - mn;
+            X = Math.sqrt(dx*dx + dy*dy);
+            let rawB = Math.atan2(dx, dy) * (180 / Math.PI);
+            if (rawB < 0) rawB += 360;
+            B = rawB.toFixed(1) + "°";
+        } else {
+            const d1 = parseFloat(document.getElementById('d1').value) || 0;
+            const d2 = parseFloat(document.getElementById('d2').value) || 0;
+            const angle = parseFloat(document.getElementById('angle').value) || 0;
+            X = Math.sqrt(d1*d1 + d2*d2 - 2*d1*d2*Math.cos(angle * rad));
+        }
 
-const v = 76;
-const g = 9.8;
+        const eSM = parseFloat(document.getElementById('eSM').value) || 0;
+        const eST = parseFloat(document.getElementById('eST').value) || 0;
+        const d1 = parseFloat(document.getElementById('d1').value) || 0;
+        const d2 = parseFloat(document.getElementById('d2').value) || 0;
+        const Y = (d2 * Math.sin(eST * rad)) - (d1 * Math.sin(eSM * rad));
 
-function solveBallistics(range, heightDifference, outputId) {
-
-    const discriminant =
-        Math.pow(v, 4) -
-        g * (
-            g * Math.pow(range, 2) +
-            2 * heightDifference * Math.pow(v, 2)
-        );
-
-    if (discriminant < 0) {
-
-        document.getElementById(outputId).innerHTML =
-            "Target unreachable.";
-
-        return;
+        const root = Math.pow(v, 4) - g * (g * X * X + 2 * Y * v * v);
+        
+        document.getElementById('resB').innerText = B;
+        document.getElementById('resA').innerText = (X > 0 && root >= 0) ? 
+            (Math.atan((v*v + Math.sqrt(root))/(g*X))/rad).toFixed(2) + "°" : "--";
     }
-
-    const sqrtPart = Math.sqrt(discriminant);
-
-    const lowRad = Math.atan(
-        (Math.pow(v, 2) - sqrtPart) /
-        (g * range)
-    );
-
-    const highRad = Math.atan(
-        (Math.pow(v, 2) + sqrtPart) /
-        (g * range)
-    );
-
-    const lowDeg = lowRad * (180 / Math.PI);
-    const highDeg = highRad * (180 / Math.PI);
-
-    document.getElementById(outputId).innerHTML = `
-        Range:
-        ${range.toFixed(2)} m<br><br>
-
-        Height Difference:
-        ${heightDifference.toFixed(2)} m<br><br>
-
-        Low Angle:
-        ${lowDeg.toFixed(2)}°<br><br>
-
-        High Angle:
-        ${highDeg.toFixed(2)}°
-    `;
-}
-
-function calculateSpotter() {
-
-    const mortarSpotter =
-        parseFloat(document.getElementById("mortarSpotter").value);
-
-    const spotterTarget =
-        parseFloat(document.getElementById("spotterTarget").value);
-
-    const spotterAngle =
-        parseFloat(document.getElementById("spotterAngle").value);
-
-    const range = Math.sqrt(
-        Math.pow(mortarSpotter, 2) +
-        Math.pow(spotterTarget, 2)
-    );
-
-    const angleRad = spotterAngle * (Math.PI / 180);
-
-    const heightDifference =
-        Math.tan(angleRad) * spotterTarget;
-
-    solveBallistics(range, heightDifference, "spotterResults");
-}
-
-function calculateSolo() {
-
-    const range =
-        parseFloat(document.getElementById("soloDistance").value);
-
-    const heightDifference = 0;
-
-    solveBallistics(range, heightDifference, "soloResults");
-}
-
 </script>
-
 </body>
 </html>
